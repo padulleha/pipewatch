@@ -27,7 +27,18 @@ class RetryResult:
 
 
 def execute_with_retry(fn: Callable, policy: RetryPolicy, *args, **kwargs) -> RetryResult:
-    """Execute fn according to policy, retrying on allowed exceptions."""
+    """Execute fn according to policy, retrying on allowed exceptions.
+
+    Args:
+        fn: The callable to execute.
+        policy: Retry policy controlling attempts, delay, and backoff.
+        *args: Positional arguments forwarded to fn.
+        **kwargs: Keyword arguments forwarded to fn.
+
+    Returns:
+        A RetryResult indicating success or failure, the return value,
+        number of attempts made, and the last error message if any.
+    """
     delay = policy.delay_seconds
     last_error = None
     for attempt in range(1, policy.max_attempts + 1):
