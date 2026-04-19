@@ -1,24 +1,23 @@
-"""Core metrics collection and evaluation for pipeline health."""
-
+"""Core metric data structures and threshold evaluation."""
+from __future__ import annotations
 from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
 class PipelineMetric:
-    name: str
+    pipeline: str
+    metric_name: str
     value: float
-    unit: str
-    timestamp: datetime = field(default_factory=datetime.utcnow)
-    tags: dict = field(default_factory=dict)
+    unit: str = ""
+    tags: Dict[str, str] = field(default_factory=dict)
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> Dict[str, Any]:
         return {
-            "name": self.name,
+            "pipeline": self.pipeline,
+            "metric_name": self.metric_name,
             "value": self.value,
             "unit": self.unit,
-            "timestamp": self.timestamp.isoformat(),
             "tags": self.tags,
         }
 
@@ -26,35 +25,38 @@ class PipelineMetric:
 @dataclass
 class ThresholdRule:
     metric_name: str
-    warning_threshold: Optional[float] = None
-    critical_threshold: Optional[float] = None
-    operator: str = "gt"  # gt, lt, gte, lte
+    warning: Optional[float] = None
+    critical: Optional[float] = None
 
     def evaluate(self, metric: PipelineMetric) -> str:
-        """Return 'ok', 'warning', or 'critical'."""
-        ops = {
-            "gt": lambda a, b: a > b,
-            "lt": lambda a, b: a < b,
-            "gte": lambda a, b: a >= b,
-            "lte": lambda a, b: a <= b,
-        }
-        compare = ops.get(self.operator)
-        if compare is None:
-            raise ValueError(f"Unknown operator: {self.operator}")
-
-        if self.critical_threshold is not None and compare(metric.value, self.critical_threshold):
+        if self.critical is not None and metric.value >= self.critical:
             return "critical"
-        if self.warning_threshold is not None and compare(metric.value, self.warning_threshold):
+        if self.warning is not None and metric.value >= self.warning:
             return "warning"
         return "ok"
 
 
-def evaluate_metrics(metrics: list[PipelineMetric], rules: list[ThresholdRule]) -> list[dict]:
-    """Evaluate a list of metrics against threshold rules."""
+@dataclass
+class EvaluationResult:
+    metric: PipelineMetric
+    status: str
+    rule: Optional[ThresholdRule] = None
+
+
+def evaluate(metric: PipelineMetric, rule: ThresholdRule) -> EvaluationResult:
+    status = rule.evaluate(metric)
+    return EvaluationResult(metric=metric, status=status, rule=rule)
+
+
+def evaluate_metrics(
+    metrics: List[PipelineMetric], rules: List[ThresholdRule]
+) -> List[EvaluationResult]:
     rule_map = {r.metric_name: r for r in rules}
     results = []
-    for metric in metrics:
-        rule = rule_map.get(metric.name)
-        status = rule.evaluate(metric) if rule else "ok"
-        results.append({"metric": metric.to_dict(), "status": status})
+    for m in metrics:
+        rule = rule_map.get(m.metric_name)
+        if rule:
+            results.append(evaluate(m, rule))
+        else:
+            results.append(EvaluationResult(metric=m, status="ok"))
     return results
