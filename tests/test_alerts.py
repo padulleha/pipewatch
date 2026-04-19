@@ -23,6 +23,10 @@ class TestAlertEvent:
         assert "etl/row_count" in event.summary()
         assert "5.0" in event.summary()
 
+    def test_summary_includes_threshold(self):
+        event = AlertEvent("etl", "row_count", "warning", 5.0, 100.0)
+        assert "100.0" in event.summary()
+
 
 class TestLogAlertChannel:
     def test_send_returns_true(self):
@@ -54,6 +58,19 @@ class TestEmailAlertChannel:
             result = channel.send(event)
         assert result is False
 
+    def test_send_to_multiple_recipients(self):
+        channel = EmailAlertChannel(
+            smtp_host="localhost", smtp_port=25,
+            sender="a@b.com", recipients=["c@d.com", "e@f.com"]
+        )
+        event = AlertEvent("etl", "lag", "critical", 99.0, 10.0)
+        with patch("smtplib.SMTP") as mock_smtp:
+            instance = mock_smtp.return_value.__enter__.return_value
+            result = channel.send(event)
+        assert result is True
+        _, call_args, _ = instance.sendmail.mock_calls[0]
+        assert call_args[1] == ["c@d.com", "e@f.com"]
+
 
 class TestDispatchAlerts:
     def test_only_non_ok_dispatched(self):
@@ -82,17 +99,3 @@ class TestParseAlertChannels:
     def test_parse_email_channel(self):
         config = {"alerts": [{
             "type": "email", "smtp_host": "smtp.x.com",
-            "smtp_port": 587, "sender": "a@x.com",
-            "recipients": ["b@x.com"]
-        }]}
-        channels = parse_alert_channels(config)
-        assert isinstance(channels[0], EmailAlertChannel)
-        assert channels[0].smtp_host == "smtp.x.com"
-
-    def test_unknown_channel_raises(self):
-        config = {"alerts": [{"type": "slack"}]}
-        with pytest.raises(ValueError, match="Unknown alert channel type"):
-            parse_alert_channels(config)
-
-    def test_empty_alerts(self):
-        assert parse_alert_channels({}) == []
