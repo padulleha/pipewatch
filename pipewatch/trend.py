@@ -51,3 +51,17 @@ def is_anomaly(entries: List[dict], value: float, sigma: float = 2.0) -> bool:
     if std == 0:
         return False
     return abs(value - mean) > sigma * std
+
+
+def percent_change(entries: List[dict], window: int = 5) -> Optional[float]:
+    """Return the percentage change between the oldest and newest value in the
+    last *window* entries, or ``None`` if there are fewer than two entries or
+    the baseline value is zero.
+    """
+    vals = _values(entries)[-window:]
+    if len(vals) < 2:
+        return None
+    baseline = vals[0]
+    if baseline == 0:
+        return None
+    return (vals[-1] - baseline) / abs(baseline) * 100
