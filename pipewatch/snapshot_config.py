@@ -15,8 +15,15 @@ def parse_snapshot_config(config: dict[str, Any]) -> dict[str, Any]:
           enabled: true
           directory: /var/pipewatch/snapshots
           auto_diff: true
+
+    Raises:
+        TypeError: If the ``snapshots`` key exists but is not a mapping.
     """
-    raw: dict[str, Any] = config.get("snapshots", {})
+    raw = config.get("snapshots", {})
+    if not isinstance(raw, dict):
+        raise TypeError(
+            f"'snapshots' config must be a mapping, got {type(raw).__name__!r}"
+        )
     return {
         "enabled": bool(raw.get("enabled", True)),
         "directory": raw.get("directory", DEFAULT_SNAPSHOT_DIR),
