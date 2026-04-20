@@ -42,6 +42,12 @@ Check the status of all tracked pipelines at a glance:
 pipewatch status
 ```
 
+View details for a specific pipeline:
+
+```bash
+pipewatch status --pipeline daily_etl
+```
+
 View all available commands:
 
 ```bash
