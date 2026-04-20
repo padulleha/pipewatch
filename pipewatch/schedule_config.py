@@ -4,6 +4,7 @@ from typing import Any, Dict, List
 
 
 DEFAULT_INTERVAL = 60  # seconds
+MIN_INTERVAL = 1  # seconds
 
 
 def parse_schedule_entries(config: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -15,6 +16,9 @@ def parse_schedule_entries(config: Dict[str, Any]) -> List[Dict[str, Any]]:
           - pipeline: my_pipeline
             interval: 120
             enabled: true
+
+    Raises:
+        ValueError: If an entry's interval is less than MIN_INTERVAL.
     """
     raw = config.get("schedules", [])
     if not isinstance(raw, list):
@@ -27,10 +31,16 @@ def parse_schedule_entries(config: Dict[str, Any]) -> List[Dict[str, Any]]:
         pipeline = item.get("pipeline", "").strip()
         if not pipeline:
             continue
+        interval = int(item.get("interval", DEFAULT_INTERVAL))
+        if interval < MIN_INTERVAL:
+            raise ValueError(
+                f"Schedule entry for '{pipeline}' has invalid interval {interval!r}: "
+                f"must be at least {MIN_INTERVAL} second(s)."
+            )
         entries.append(
             {
                 "pipeline": pipeline,
-                "interval": int(item.get("interval", DEFAULT_INTERVAL)),
+                "interval": interval,
                 "enabled": bool(item.get("enabled", True)),
             }
         )
