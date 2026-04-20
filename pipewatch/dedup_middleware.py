@@ -22,6 +22,7 @@ class DedupDispatcher:
         self.registry = registry
         self.dispatchers = dispatchers
         self.suppressed_count = 0
+        self.dispatched_count = 0
 
     def dispatch(self, event: AlertEvent) -> bool:
         """Send *event* through all dispatchers unless it is a duplicate.
@@ -39,7 +40,18 @@ class DedupDispatcher:
         self.registry.record(pipeline, metric, status)
         for fn in self.dispatchers:
             fn(event)
+        self.dispatched_count += 1
         return True
 
     def reset_suppressed_count(self) -> None:
         self.suppressed_count = 0
+
+    def stats(self) -> dict:
+        """Return a snapshot of dispatch statistics.
+
+        Returns a dict with ``dispatched`` and ``suppressed`` counts.
+        """
+        return {
+            "dispatched": self.dispatched_count,
+            "suppressed": self.suppressed_count,
+        }
