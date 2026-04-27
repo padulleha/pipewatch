@@ -44,6 +44,21 @@ class ThrottleDispatcher:
         self._send(event)
         return True
 
+    def dispatch_many(self, events: List[AlertEvent]) -> Dict[str, int]:
+        """Dispatch a batch of events and return a summary of outcomes.
+
+        Returns a dict with keys ``'sent'`` and ``'suppressed'`` reflecting
+        the number of events in each category for this batch.
+        """
+        sent = 0
+        suppressed = 0
+        for event in events:
+            if self.dispatch(event):
+                sent += 1
+            else:
+                suppressed += 1
+        return {"sent": sent, "suppressed": suppressed}
+
     def reset_suppressed_count(self) -> None:
         """Reset the running suppressed-alert counter."""
         self._suppressed = 0
